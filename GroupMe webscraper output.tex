@@ -1,0 +1,57 @@
+%!TeX program = XeLaTeX
+\documentclass[12pt]{article}
+\usepackage{amsmath,amssymb}
+\usepackage[top = 5mm, bottom = 5mm, paperheight = 14in]{geometry}
+\usepackage{twemojis}
+\setlength{\twemojiDefaultHeight}{2em}
+\usepackage{xcolor}
+\PassOptionsToPackage{hyphens}{url}
+\usepackage{hyperref}
+\hypersetup{
+  pdftitle={Title of PDF}, % choose a title for your PDF
+  pdfcreator={GroupMe to LaTeX web scraper v1.0, by qedgary},
+  pdfnewwindow=true,
+  colorlinks=true,
+  linkcolor=black,
+  urlcolor=blue
+}
+\usepackage{fontspec}
+\setsansfont{Segoe UI} % Ideally, choose an easy-to-read font
+
+% This package assumes that you have installed the twemoijis package. However, this package does not come by default on TeX Live or Overleaf. If you don’t feel like installing it, you can delete the \usepackage{twemojis} line, and edit the line below to use a font with emoji support. On Windows, for example, this could be Segoe UI Emoji
+\providecommand{\texttwemoji}[1]{{\fontspec{Segoe UI Emoji}#1}}
+
+\everymath{\displaystyle}
+
+\reversemarginpar
+
+\definecolor{calmblue}{RGB}{0,102,255}
+
+\newcommand{\heart}[1]{\vspace{-1ex}\raisebox{-0.15ex}{\includegraphics[height=0.6em]{GroupMe_img/heart.pdf}} {\scriptsize\color{white!70!black}Liked by #1}\vspace{1ex}}
+\newcommand{\sender}[1]{\textbf{#1}}
+\newcommand{\datetime}[1]{\hspace{1ex}{\color{white!70!black}\footnotesize#1}\par}
+\newcommand{\reply}[2]{\raisebox{-0.1em}[0em][0em]{\includegraphics[height=0.8em]{GroupMe_img/reply_arrow}} {\color{gray}\footnotesize\textbf{#1} \emph{#2}\,\vspace{-1.7ex}
+}}
+\newcommand{\profilePic}[1]{\makebox[0em][r]{\raisebox{0em}[0em][0em]{\raisebox{-2em}{\includegraphics[width=3em,height=3em]{GroupMe_img/#1}}\hspace{3mm}}}\hspace*{-0.25em}}
+\newcommand{\genericProfilePic}[1]{\makebox[0em][r]{\raisebox{-1.5em}[-3em][-3em]{\color{calmblue}\scalebox{3.4}{\textcircled{\scalebox{0.7}{ {#1} }}}}\hspace{2mm}}\hspace*{-0.25em}}
+\newcommand{\GroupMe}[1]{\raisebox{0.1ex}{\includegraphics{GroupMe_img/GroupMe_sys_msg}} {\itshape#1}}
+%\newcommand{\fileattached}[1]{\emph{\color{calmblue}#1}}
+\@ifpackageloaded{}
+
+
+\newenvironment{senderFirstMessage}{\vspace{\messageSpread}
+\par\begin{minipage}{\textwidth}}{\end{minipage}\vspace{1ex}}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{1.7ex}
+\newlength{\messageSpread}
+\setlength{\messageSpread}{1ex}
+
+\pagestyle{empty}
+
+\begin{document}
+\sffamily
+
+\input{GroupMeInput.tex}
+
+\end{document}
