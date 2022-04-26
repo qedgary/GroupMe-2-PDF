@@ -1,3 +1,5 @@
+# GroupMe-2-PDF
+
 GroupMe-2-PDF is a utility that converts a GroupMe chat into a PDF. GroupMe is a popular messaging app that has spread thanks to its ability to create group chats and instantly add new members, even those without GroupMe accounts. Although available through both a mobile app and a web app, GroupMe for web lacks a significant amount of the functionality of the mobile app, such as search features, which hinders its use in important communications. On the other hand, the GroupMe mobile app has all the inconveniences of mobile devices:  small screen size, limited ability to use a keyboard or mouse, and limited ability to work with other apps. For those who need to search chats for old but critically important messages, neither of these two choices is particularly desirable.
 
 The generation of a PDF from a GroupMe chat facilitates searching through old messages, and it archives chats so that future can benefit from reading a conversation without having to join the group chat. GroupMe-2-PDF relies on a modern distribution of these programs to:
