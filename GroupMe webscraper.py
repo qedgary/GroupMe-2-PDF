@@ -28,6 +28,24 @@ start_time = 1661711400       # UNIX time for first message
 from_zone  = tz.gettz('UTC')
 to_zone    = tz.gettz('America/New_York') # set local time zone
 
+# Fonts for different scripts
+lang_font = {
+    "jp" : "Yu Gothic",
+    "zh" : "Microsoft YaHei",
+    "ko" : "Malgun Gothic",
+    "hi" : "Nirmala UI",
+    "ta" : "Nirmala UI",
+    "got": "Segoe UI Historic",
+    "runic": "Segoe UI Historic"
+}
+
+
+# Only run the stuff between this and the next commented row of hyphens if you're sure 
+# you want to make API calls. This takes a long time to run, and requires an Internet
+# connection.
+# --------------------------------------------------------------------------------------
+
+
 groupme = requests.get(
     chatURL,
     params = {
@@ -170,14 +188,15 @@ for user in distinctUsers:
             circleImage(filename)
 
 
-# Run below this line if you aren't able to connect to the web
-# ------------------------------------------------------------
+# Once you have your saved_messages.json file, run below this line if you aren't able to
+# connect to the web, or you don't want to re-run the API calls (which take a long time)
+# --------------------------------------------------------------------------------------
 
 with open("saved_messages.json", 'r') as f:
     messages = json.load(f)
 
 # Now, we translate our list of messages into a string that LaTeX can read
-output = "%!TeX root = GroupMe webscraper output.tex\n%!TeX program = XeLaTeX\n\n"
+output = "%!TeX root = GroupMe webscraper output Underling 2022-23.tex\n%!TeX program = XeLaTeX\n\n" # TO DO - fix this naming convention so that people can choose their own file names
 
 failureStr = "" # for any sort of failures
 
@@ -186,7 +205,7 @@ prev_m = {'attachments': [],  'avatar_url': '', 'created_at': 0, 'favorited_by':
 mostWords       = prev_m
 mostChars       = prev_m
 oneCharList     = []
-coolSubstr      = "among us"
+coolSubstr      = "wug"
 mostSubstr      = prev_m
 mostSubstr_list = []
 mostChars_no_e  = prev_m
@@ -197,6 +216,8 @@ def getUser(userID):
     Given a user ID, returns the tuple of the user's name, user_id, and avatar_url,
     or returns the string "unknown user" if no user is found
     """
+    if type(userID) == int:
+        userID = str(userID)
     for user in distinctUsers:
         if user[1] == userID:
             return user
@@ -211,6 +232,24 @@ def getMessage(messageID):
         if m["id"] == messageID:
             return m
     return {'attachments': [],  'avatar_url': '', 'created_at': 0, 'favorited_by': [], 'group_id': '84353221', 'id': '',  'name': "", 'sender_id': '',  'sender_type': 'user', 'source_guid': '', 'system': False,  'text': 'ERROR GRABBING MESSAGE',  'user_id': '', 'platform': 'gm'}
+
+# If we only ran the code below the "if you aren't able to connect to the web" line, then we need to
+# regenerate the list of distinct users. If we already have a list of distinct user, this if-statement
+# gets skipped
+try:
+    distinctUsers
+except NameError:
+    distinctUsers = []
+    for m in messages:
+        if distinctUsers:
+            isDistinct = True
+            for user in distinctUsers: 
+                isDistinct = isDistinct and (user[0] != m["name"])
+            if isDistinct:
+                distinctUsers.append((m["name"], m["user_id"], m["avatar_url"]))
+        else:
+            distinctUsers.append((m["name"], m["user_id"], m["avatar_url"]))
+
 
 for k in range(len(messages)): # traverse all messages
     m = messages[k]
@@ -267,12 +306,13 @@ for k in range(len(messages)): # traverse all messages
                         
                         # handle emojis
                         emojiContent = [c for c in repliedMessageWords[k] if c in emoji.UNICODE_EMOJI['en']] 
-                        if emojiContent: # if the message has emojis
-                            for e in emojiContent: # then transform them into LaTeX-readable commands
-                                TeXemoji = emoji.demojize(e)[1:-1] # demojize, then remove colons at front and end
-                                TeXemoji = TeXemoji.replace("_", ' ') # replace underscores with spaces
+                        if emojiContent: # if the reply has emojis
+                            for e in emojiContent:
+                                TeXemoji = emoji.demojize(e)[1:-1]
+                                TeXemoji = TeXemoji.replace("_", ' ')
                                 TeXemoji = "\\raisebox{-0.2em}{\\Large\\texttwemoji{" + TeXemoji + "}}"
                                 repliedMessageWords[k] = repliedMessageWords[k].replace(e, TeXemoji)
+                            #repliedMessageWords[k] = re.sub(r"(}}\\raisebox{-0.2em}{\\Large\\texttwemoji{)((?:\w|-)+)( skin tone}})", r": \2 skin tone}}", repliedMessageWords[k])
                         
                         if "/" in repliedMessageWords[k]:
                             output += repliedMessageWords[k]
@@ -314,7 +354,7 @@ for k in range(len(messages)): # traverse all messages
         if m["text"] == None: # if there is no text in the message (e.g. it's all an image)
             m["text"] = ""
             
-        messageContent = m["text"].replace("\n", "\\\\")
+        messageContent = m["text"].replace("\\", "\\textbackslash").replace("\n", "\\\\")
         
         # Emojis --------------------------------------------
         emojiContent = [c for c in messageContent if c in emoji.UNICODE_EMOJI['en']] 
@@ -324,6 +364,12 @@ for k in range(len(messages)): # traverse all messages
                 TeXemoji = TeXemoji.replace("_", ' ') # replace underscores with spaces
                 TeXemoji = "\\raisebox{-0.2em}{\\Large\\texttwemoji{" + TeXemoji + "}}"
                 messageContent = messageContent.replace(e, TeXemoji)
+            
+            # handle the weird way Python emoji breaks up emojis involving skin color
+            messageContent = re.sub(
+                    r"(}}\\raisebox{-0.2em}{\\Large\\texttwemoji{)((?:\w|-)+)( skin tone}})",
+                    r": \2 skin tone}}", messageContent
+                )
         
         # URLs ---------------------------------------------
         if "https://" in messageContent or "http://" in messageContent:
@@ -353,6 +399,27 @@ for k in range(len(messages)): # traverse all messages
             messageContent = messageContent.replace(" &", " \\&")
             messageContent = messageContent.replace("% ", "\\% ")
 
+        # Process non-Latin scripts ------------------------
+        # If your GroupMe chat doesn't have a lot of non-Latin characters, it's a little faster to run
+        # if you just comment these lines out.
+        # Japanese
+        messageContent = re.sub(u"([\u3040-\u30ff]+)", r"{\\fontspec{" + lang_font["jp"] + r"}\1}", messageContent)
+        # Chinese
+        messageContent = re.sub(u"((?:[\u4e00-\u9fff]|[\u3000-\u303f])+)", r"{\\fontspec{" + lang_font["zh"] + r"}\1}", messageContent)
+        # Korean
+        messageContent = re.sub(u"((?:[\uac00-\ud7af]+,?\s?)+)", r"{\\fontspec{" + lang_font["ko"] + r"}\1}", messageContent)
+        # Hindi
+        messageContent = re.sub(u"((?:[\u0900-\u097f]+,?\s?)+)", r"{\\fontspec{" + lang_font["hi"] + r"}\1}", messageContent)
+        # Tamil
+        messageContent = re.sub(u"((?:[\u0b82-\u0bf2]+,?\s?)+)", r"{\\fontspec{" + lang_font["ta"] + r"}\1}", messageContent)
+        # Languages in Arabic script
+        messageContent = re.sub(u"((?:[\u0600-\u06ff]+\s*)+)", r"\\textarabic{\1}", messageContent)
+        # Gothic
+        messageContent = re.sub(u"((?:[\U00010330-\U0001034F]+\s?)+)", r"{\\fontspec{" + lang_font["got"] + r"}\1}", messageContent)
+        # Runic
+        messageContent = re.sub(u"((?:[\u16a0-\u16f8]+\s?)+)", r"{\\fontspec{" + lang_font["runic"] + r"}\1}", messageContent)
+        # Now, I bet you're wondering what kinds of groupchats I get myself into...
+
         # Add message content ------------------------------
         output += "\n" + messageContent + "\n"
         
@@ -373,7 +440,7 @@ for k in range(len(messages)): # traverse all messages
             output += "\n\\heart{" + ", ".join([getUser(user)[0] for user in m["favorited_by"]]) + "}\n"
         
     except:
-        failureStr += m["text"] + "\n\n"
+        failureStr += m["text"] + "\n"
         
         
 #print(output)
@@ -381,12 +448,11 @@ for k in range(len(messages)): # traverse all messages
 
 if failureStr:
     print("UH OH! THIS DIDN'T WORK:\n===================================")
-    print(failureStr)
-    # a useful debugging tool that tells us which messages trigger errors in the code above
+    print(failureStr) # this way, we know which messages trigger errors in the code
     print("===================================\n")
 
 
-f = open("GroupMeInput.tex", "w", encoding="utf-8")
+f = open("GroupMeInput_underling_2022_23.tex", "w", encoding="utf-8")
 f.write(output)
 f.close()
 
