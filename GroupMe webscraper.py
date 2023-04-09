@@ -19,14 +19,14 @@ from PIL import Image, ImageDraw # for cropping images to circles
 # `token`   is an API request token linked to your GroupMe account, and it should
 #           look like a bunch of gibberish letters and numbers
 # the `groupID` and `token` below are fake
-groupID        = "12345678" 
-token          = "a0bc1defghi2jklmn34567opq8rs9tuvwxyzab0c" 
-chatURL        = "https://api.groupme.com/v3/groups/" + groupID + "/messages?token="
+groupID    = "12345678" 
+token      = "a0bc1defghi2jklmn34567opq8rs9tuvwxyzab0c" 
+chatURL    = "https://api.groupme.com/v3/groups/" + groupID + "/messages?token=" + token
 
-messages       = []               # a list to contain all the messages
-Jan_1_2022     = 1640995200       # 2022 January 1 as a UNIX time. Change this to match your needs
-from_zone      = tz.gettz('UTC')
-to_zone        = tz.gettz('America/New_York') # set local time zone
+messages   = []               # a list to contain all the messages
+start_time = 1661711400       # UNIX time for first message
+from_zone  = tz.gettz('UTC')
+to_zone    = tz.gettz('America/New_York') # set local time zone
 
 groupme = requests.get(
     chatURL,
@@ -245,14 +245,43 @@ for k in range(len(messages)): # traverse all messages
                     
                     # what is the ID of the message being replied to?
                     replyID = attachment["reply_id"] 
-                    # grab text of replied message, then split it into individual words
-                    repliedMessageWords = getMessage(replyID)["text"].split() 
-                    # keep track of the length, in characters, of our reply
-                    replyToLength = 0
+                    # grab text of replied message
+                    repliedMessageWords = getMessage(replyID)["text"]
+                    # next, we sanitize the text for TeX character codes. For instance, URLs will have #'s and
+                    # %'s, but because URLs in the reply section are not surrounded by the \reply macro, we need
+                    # to escape TeX character codes
+                    repliedMessageWords = repliedMessageWords.replace("#", "\\#").replace("&", "\\&").replace("%", "\\%").replace("_", "\\_")
+                    # then split the reply text into individual words. Because URLs will have very long reply
+                    # texts, we replace slashes with slashes plus a whitespace, which will cause Python to
+                    # split at slashes. This lets reply text be cut off at slashes
+                    repliedMessageWords = repliedMessageWords.replace("/", "/ ")
+                    repliedMessageWords = repliedMessageWords.split() 
+                    
+                    # Now, we generate the text in the reply box. First, we must keep track of the length, in
+                    # characters, of our reply, including both the username length and the message itself.
+                    # This way, the text won't exceed one line when displaying the quoted message
+                    replyToLength = len(getUser(attachment["user_id"])[0])
                     for k in range(len(repliedMessageWords)):
-                        output += repliedMessageWords[k] + " "
+                        
                         replyToLength += len(repliedMessageWords[k])
-                        if replyToLength > 70:
+                        
+                        # handle emojis
+                        emojiContent = [c for c in repliedMessageWords[k] if c in emoji.UNICODE_EMOJI['en']] 
+                        if emojiContent: # if the message has emojis
+                            for e in emojiContent: # then transform them into LaTeX-readable commands
+                                TeXemoji = emoji.demojize(e)[1:-1] # demojize, then remove colons at front and end
+                                TeXemoji = TeXemoji.replace("_", ' ') # replace underscores with spaces
+                                TeXemoji = "\\raisebox{-0.2em}{\\Large\\texttwemoji{" + TeXemoji + "}}"
+                                repliedMessageWords[k] = repliedMessageWords[k].replace(e, TeXemoji)
+                        
+                        if "/" in repliedMessageWords[k]:
+                            output += repliedMessageWords[k]
+                        else:
+                            output += repliedMessageWords[k] + " "
+                        
+                        # once the reply is too long to fit on one line, cut it off
+                        # we have semi-arbitrarily defined "too long" to be 60 characters
+                        if replyToLength > 60: 
                             output += " $\\ldots$"
                             break
                     
@@ -302,17 +331,27 @@ for k in range(len(messages)): # traverse all messages
 
         # Process remaining text ---------------------------
         messageContent = messageContent.replace("^", "\\textasciicircum ")
-        messageContent = messageContent.replace("Created new poll", "\\itshape Created new poll")
+        if "Created new poll" in messageContent[0:16]:
+            messageContent = messageContent.replace("Created new poll", "{\\itshape Created new poll") + "}"
         messageContent = messageContent.replace("Shared a document: ", "\\par\\vspace{1ex}\\raisebox{-1em}{\\includegraphics[height = 3em]{GroupMe_img/file_icon}}\\ \\emph{Shared a document: }")
         
+        # If there isn't a URL in the message, replace the hashtag, ampersand, and other characters
+        # with their LaTeX equivalents. If there is a URL in the message, then only replace those 
+        # either preceding or following a space (depending on the character). This way, we won't
+        # wreck characters that are already inside the argument of \url
+        # This is a bit of a workaround, and it's easy to think of examples where these two
+        # heuristics fail, but realistically (and from experience), this works most of the time
         if "\\url" not in messageContent:
-            # If there isn't a URL in the message, replace the hashtag and ampersand characters
-            # with their LaTeX equivalents. This is a bit of a workaround, and it's easy to
-            # think of examples where this heuristic fails, but realistically, it'll work most
-            # of the time
             messageContent = messageContent.replace("#", "\\#")
+            messageContent = messageContent.replace("$", "\\$")
             messageContent = messageContent.replace("&", "\\&")
             messageContent = messageContent.replace("%", "\\%")
+            messageContent = messageContent.replace("_", "\\_")
+        else:
+            messageContent = messageContent.replace(" #", " \\#")
+            messageContent = messageContent.replace(" $", " \\$")
+            messageContent = messageContent.replace(" &", " \\&")
+            messageContent = messageContent.replace("% ", "\\% ")
 
         # Add message content ------------------------------
         output += "\n" + messageContent + "\n"
@@ -351,7 +390,7 @@ f = open("GroupMeInput.tex", "w", encoding="utf-8")
 f.write(output)
 f.close()
 
-# Uncomment these for some fun stuff :)
+# Print these variables for some fun stuff :)
 # mostWords       # what message has the most words?
 # mostChars       # what message has the most characters?
 # oneCharList     # what messages were exactly one character long?
