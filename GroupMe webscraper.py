@@ -50,7 +50,7 @@ groupme = requests.get(
     chatURL,
     params = {
         "limit": 1, # grab one message at a time
-        "since_id": Jan_1_2022 # grab the messages that happened after since this time
+        "since_id": start_time # grab the messages that happened after since this time
     }
 )
 
@@ -60,6 +60,11 @@ groupme = requests.get(
 # that...
 while groupme.status_code == 200:
     previous_message = groupme.json()["response"]["messages"]
+    
+    if previous_message[0]["created_at"] < start_time:
+        # stop requesting messages if they precede our desired start time
+        break
+    
     previous_message_id = previous_message[0]["id"]
     messages += previous_message  
     
@@ -196,7 +201,7 @@ with open("saved_messages.json", 'r') as f:
     messages = json.load(f)
 
 # Now, we translate our list of messages into a string that LaTeX can read
-output = "%!TeX root = GroupMe webscraper output Underling 2022-23.tex\n%!TeX program = XeLaTeX\n\n" # TO DO - fix this naming convention so that people can choose their own file names
+output = "%!TeX root = GroupMe webscraper output.tex\n%!TeX program = XeLaTeX\n\n" # TO DO - fix this naming convention so that people can choose their own file names
 
 failureStr = "" # for any sort of failures
 
@@ -205,10 +210,13 @@ prev_m = {'attachments': [],  'avatar_url': '', 'created_at': 0, 'favorited_by':
 mostWords       = prev_m
 mostChars       = prev_m
 oneCharList     = []
-coolSubstr      = "wug"
+coolSubstr      = "among us"
 mostSubstr      = prev_m
 mostSubstr_list = []
 mostChars_no_e  = prev_m
+mostLiked       = prev_m
+mostLiked_list  = []
+emojiList       = [] # if you want to find the most common emoji
 
 
 def getUser(userID):
@@ -330,6 +338,8 @@ for k in range(len(messages)): # traverse all messages
                     imagePresent = "\\includegraphics[width=7cm]{GroupMe_img/" + m["id"] + "}"
                 if attachment["type"] == "file":
                     filePresent  = "\\fileattached{" + attachment["file_id"] + "}"
+                if attachment["type"] == "video":
+                    pass # TO DO - handle videos
         
         if m["name"] != "GroupMe" and prev_m["name"] != m["name"]: # if a person sends multiple messages
             output += "\\begin{senderFirstMessage}" # create a minipage environment
@@ -370,7 +380,11 @@ for k in range(len(messages)): # traverse all messages
                     r"(}}\\raisebox{-0.2em}{\\Large\\texttwemoji{)((?:\w|-)+)( skin tone}})",
                     r": \2 skin tone}}", messageContent
                 )
-        
+
+            # handle the weird way Python emoji breaks up emojis involving gender
+            messageContent = re.sub(r"{\\Large\\texttwemoji{person ((?:\w|\s|:|-)+)}}.?\\raisebox{-0\.2em}{\\Large\\texttwemoji{female sign}}️", r"{\\Large\\texttwemoji{woman \1}}", messageContent)
+            messageContent = re.sub(r"{\\Large\\texttwemoji{person ((?:\w|\s|:|-)+)}}.?\\raisebox{-0\.2em}{\\Large\\texttwemoji{male sign}}️", r"{\\Large\\texttwemoji{man \1}}", messageContent)
+
         # URLs ---------------------------------------------
         if "https://" in messageContent or "http://" in messageContent:
             messageContent = re.sub(r"(https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))", r"\\url{\1}", messageContent)
@@ -398,6 +412,9 @@ for k in range(len(messages)): # traverse all messages
             messageContent = messageContent.replace(" $", " \\$")
             messageContent = messageContent.replace(" &", " \\&")
             messageContent = messageContent.replace("% ", "\\% ")
+
+        # prevent LaTeX spaces from treating the period in Dr. as the end of a sentence
+        messageContent = re.sub("(dr|mr|prof|ms)\.", "\1.\ ", messageContent, flags = re.IGNORECASE)
 
         # Process non-Latin scripts ------------------------
         # If your GroupMe chat doesn't have a lot of non-Latin characters, it's a little faster to run
@@ -452,7 +469,7 @@ if failureStr:
     print("===================================\n")
 
 
-f = open("GroupMeInput_underling_2022_23.tex", "w", encoding="utf-8")
+f = open("GroupMeInput.tex", "w", encoding="utf-8")
 f.write(output)
 f.close()
 
@@ -462,3 +479,5 @@ f.close()
 # oneCharList     # what messages were exactly one character long?
 # mostSubstr_list # what messages contained the substring `coolSubstr` the most times? Case is ignored
 # mostChars_no_e  # what was the longest message that didn't contain the letter e?
+# mostLiked_list  # what messages were tied for the most liked messages?
+# emojiList       # what emojis appeared in the chat?
