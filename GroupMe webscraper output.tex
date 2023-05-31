@@ -8,14 +8,16 @@
 \PassOptionsToPackage{hyphens}{url}
 \usepackage{hyperref}
 \hypersetup{
-  pdftitle={Title of PDF}, % choose a title for your PDF
+  pdftitle={My GroupMe PDF}, % replace this default with a descriptive title for your PDF
   pdfcreator={GroupMe to LaTeX web scraper v1.0, by qedgary},
   pdfnewwindow=true,
   colorlinks=true,
   linkcolor=black,
   urlcolor=blue
 }
-\usepackage{fontspec}
+\usepackage{fontspec, polyglossia}
+\setmainlanguage{english}
+\setotherlanguage{arabic}
 \setsansfont{Segoe UI} % Ideally, choose an easy-to-read font
 
 % This package assumes that you have installed the twemoijis package. However, this package does not come by default on TeX Live or Overleaf. If you don’t feel like installing it, you can delete the \usepackage{twemojis} line, and edit the line below to use a font with emoji support. On Windows, for example, this could be Segoe UI Emoji
@@ -36,7 +38,6 @@
 \newcommand{\genericProfilePic}[1]{\makebox[0em][r]{\raisebox{-1.5em}[-3em][-3em]{\color{calmblue}\scalebox{3.4}{\textcircled{\scalebox{0.7}{ {#1} }}}}\hspace{2mm}}\hspace*{-0.25em}}
 \newcommand{\GroupMe}[1]{\raisebox{0.1ex}{\includegraphics{GroupMe_img/GroupMe_sys_msg}} {\itshape#1}}
 %\newcommand{\fileattached}[1]{\emph{\color{calmblue}#1}}
-\@ifpackageloaded{}
 
 
 \newenvironment{senderFirstMessage}{\vspace{\messageSpread}
