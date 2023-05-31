@@ -414,7 +414,7 @@ for k in range(len(messages)): # traverse all messages
             messageContent = messageContent.replace("% ", "\\% ")
 
         # prevent LaTeX spaces from treating the period in Dr. as the end of a sentence
-        messageContent = re.sub("(dr|mr|prof|ms)\.", "\1.\ ", messageContent, flags = re.IGNORECASE)
+        messageContent = re.sub("(dr|mr|prof|ms)\.\s", r"\1.\\ ", messageContent, flags = re.IGNORECASE)
 
         # Process non-Latin scripts ------------------------
         # If your GroupMe chat doesn't have a lot of non-Latin characters, it's a little faster to run
@@ -473,7 +473,8 @@ f = open("GroupMeInput.tex", "w", encoding="utf-8")
 f.write(output)
 f.close()
 
-# Print these variables for some fun stuff :)
+# Uncomment these just for fun :)
+# =======================================================================
 # mostWords       # what message has the most words?
 # mostChars       # what message has the most characters?
 # oneCharList     # what messages were exactly one character long?
@@ -481,3 +482,21 @@ f.close()
 # mostChars_no_e  # what was the longest message that didn't contain the letter e?
 # mostLiked_list  # what messages were tied for the most liked messages?
 # emojiList       # what emojis appeared in the chat?
+#
+# print("In the message with the most words, there were {} words in total".format(len(mostWords["text"].split())))
+# print("In the message with the most characters, there were {} characters in total".format(len(mostChars["text"])))
+#
+# oneCharList_chars = [m["text"] for m in oneCharList]
+# oneCharList_freqs = []
+# for c in oneCharList_chars:
+#     oneCharList_freqs.append([ord(c), oneCharList_chars.count(c)])
+# mostFreqOneCharMessage = oneCharList_freqs[np.argmax(np.array(oneCharList_freqs)[:,1])]
+# print("There were {} messages with exactly one character, and the most frequent one-character message was \"{}\", which occurred {} times"\
+#       .format(len(oneCharList), chr(mostFreqOneCharMessage[0]), mostFreqOneCharMessage[1]))
+#
+# emojiFreqs = []
+# for e in emojiList:
+#     emojiFreqs.append([ord(e), emojiList.count(e)])
+# mostFreqEmoji = emojiFreqs[np.argmax(np.array(emojiFreqs)[:,1])]
+# print("The most common emoji was {}, which appeared a total of {} times"\
+#       .format(chr(mostFreqEmoji[0]), mostFreqEmoji[1]))
