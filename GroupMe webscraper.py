@@ -36,9 +36,11 @@ lang_font = {
     "hi" : "Nirmala UI",
     "ta" : "Nirmala UI",
     "got": "Segoe UI Historic",
-    "runic": "Segoe UI Historic"
+    "runic": "Segoe UI Historic",
+    "ett": "Segoe UI Historic"
 }
 
+failureStr = "" # A string that records failures that occur
 
 # Only run the stuff between this and the next commented row of hyphens if you're sure 
 # you want to make API calls. This takes a long time to run, and requires an Internet
@@ -86,8 +88,43 @@ messages = [m for m in reversed(messages)]
 with open("saved_messages.json", 'w') as f:
     json.dump(messages, f, indent=2) 
 
-distinctUsers = [] 
-imageList     = []
+distinctUsers = [] # create a list of all the distinct users in the chat
+
+def downloadImageFromAPI(url, downloadName):
+    """
+    Downloads an image from the GroupMe API, and saves it in the local folder (not the GroupMe_img folder).
+    The two parameters are the url of the image, and the filename which the image will be saved as. The 
+    download name must *not* contain the file extension—instead, the function automatically obtains the
+    file type of the image when the API request is made.
+    
+    The function returns the path of the image after downloading. This is for later use with the function
+    circleImage.
+    """
+    img = requests.get(url, stream = True)
+    
+    if img.status_code == 200:
+        img.raw.decode_content = True
+        
+        if ".jpg" in url or ".jpeg" in url:
+            extension = ".jpg"
+        elif ".png" in url:
+            extension = ".png"
+        elif ".gif" in url:
+            extension = ".gif" 
+        
+        if not os.path.exists(downloadName + extension): # if image doesn't already exist
+            with open(downloadName + extension,'wb') as f: # save the file to a local location
+                shutil.copyfileobj(img.raw, f)
+        
+        # Note that the "if image doesn't already exist" condition means that only the oldest profile photo of a user is downloaded
+            
+        if extension == ".gif": # save GIFs as PNGs so that they work in LaTeX
+            img = Image.open(downloadName + extension).convert("RGB")
+            img.save(downloadName + ".png")
+            
+            extension = ".png"
+            
+        return downloadName + extension
 
 # We'll loop through `messages` to perform some pre-processing before we actually manipulate the content of the messages
 for m in messages:
@@ -104,29 +141,15 @@ for m in messages:
 
     # download images via requests.get and save to a folder
     if len(m["attachments"]) > 0:
+        # assign each attachment an index based on its position in the array
+        # this will matter when we include images for each message
+        attachmentIndex = 0 
         for attachment in m["attachments"]:
-            if attachment["type"] == "image":    
-                # Download image
-                img = requests.get(attachment["url"], stream = True)
-                
-                if img.status_code == 200:
-                    img.raw.decode_content = True
-                    
-                    if ".jpg" in attachment["url"] or ".jpeg" in attachment["url"]:
-                        extension = ".jpg"
-                    elif ".png" in attachment["url"]:
-                        extension = ".png"
-                    elif ".gif" in attachment["url"]:
-                        extension = ".gif" 
-                    
-                    filename = "GroupMe_img/" + m["id"] + extension
-                    with open(filename,'wb') as f: # save the file to a local location
-                        shutil.copyfileobj(img.raw, f)
-                        
-                    if extension == ".gif": # save GIFs as PNGs so that they work in LaTeX
-                        img = Image.open(filename).convert("RGB")
-                        img.save("GroupMe_img/" + m["id"] + ".png")
-
+            if attachment["type"] == "image":
+                downloadName = "GroupMe_img/" + m["id"] + "_" + str(attachmentIndex)
+                downloadImageFromAPI(attachment["url"], downloadName)
+                # TO DO - create an else statement in case an image can't be pulled
+            attachmentIndex += 1
 
 
 def circleImage(filename):
@@ -169,28 +192,17 @@ def circleImage(filename):
     # Save with alpha
     Image.fromarray(npImage).save(imgName + "_circle.png")
 
+# Download profile pictures
 for user in distinctUsers:
     profileImgURL = user[2]
     if user[0] != "GroupMe" and profileImgURL != None:
-        img = requests.get(user[2], stream = True)
-        
-        if img.status_code == 200:
-            img.raw.decode_content = True
-            
-            if ".jpg" in profileImgURL or ".jpeg" in profileImgURL:
-                extension = ".jpg"
-            elif ".png" in profileImgURL:
-                extension = ".png"
-            elif ".gif" in profileImgURL:
-                extension = ".gif"
-            
-            filename = "GroupMe_img/user" + user[1] + extension
-            if not os.path.exists(filename): # if profile picture doesn't already exist
-                with open(filename,'wb') as f: # save the file to a local location
-                    shutil.copyfileobj(img.raw, f)
-            
-            # now crop the image to the shape of a circle
-            circleImage(filename)
+        profilePhotoPath = downloadImageFromAPI(profileImgURL, "GroupMe_img/user" + user[1])
+        try: # now crop the image to the shape of a circle
+            circleImage(profilePhotoPath)
+        except:
+            failureStr += "Profile photo download error for user {} ({})\n".format(user[0],user[1])
+            # This happens sometimes. This is a problem with GroupMe because it happens
+            # even on the official GroupMe app
 
 
 # Once you have your saved_messages.json file, run below this line if you aren't able to
@@ -221,8 +233,9 @@ emojiList       = [] # if you want to find the most common emoji
 
 def getUser(userID):
     """
-    Given a user ID, returns the tuple of the user's name, user_id, and avatar_url,
-    or returns the string "unknown user" if no user is found
+    Given a user ID, returns the tuple of the user's name, user_id, and avatar_url.
+    If no user is found, the tuple contains the string "unknown user", 0 for the 
+    user_id, and an empty string for the avatar_url.
     """
     if type(userID) == int:
         userID = str(userID)
@@ -236,6 +249,9 @@ def getMessage(messageID):
     Given a message ID, returns the message as a dictionary, or if no message is found, 
     returns a dictionary with mostly empty fields and an error
     """
+    # ID's are strings by default, so just in case we want to input integers in this
+    # function, we convert to string
+    messageID = str(messageID)
     for m in messages:
         if m["id"] == messageID:
             return m
@@ -283,9 +299,10 @@ for k in range(len(messages)): # traverse all messages
                 mostSubstr_list.append(m)
         
         imagePresent = "" # if an image is present, we'll save it here, to add to `output` later
-        filePresent  = "" # same thing if a file is attached
+        filePresent  = "" # same thing if a file is attached. Note:  currently, this doesn't do anything
         
         if len(m["attachments"]) > 0:
+            attachmentIndex = 0
             for attachment in m["attachments"]:
                 if attachment["type"] == "reply":
                     output += "\n\\reply{" + getUser(attachment["user_id"])[0] + "}{"
@@ -316,11 +333,11 @@ for k in range(len(messages)): # traverse all messages
                         emojiContent = [c for c in repliedMessageWords[k] if c in emoji.UNICODE_EMOJI['en']] 
                         if emojiContent: # if the reply has emojis
                             for e in emojiContent:
-                                TeXemoji = emoji.demojize(e)[1:-1]
-                                TeXemoji = TeXemoji.replace("_", ' ')
-                                TeXemoji = "\\raisebox{-0.2em}{\\Large\\texttwemoji{" + TeXemoji + "}}"
-                                repliedMessageWords[k] = repliedMessageWords[k].replace(e, TeXemoji)
-                            #repliedMessageWords[k] = re.sub(r"(}}\\raisebox{-0.2em}{\\Large\\texttwemoji{)((?:\w|-)+)( skin tone}})", r": \2 skin tone}}", repliedMessageWords[k])
+                                if e not in ["™", "®️"]:
+                                    TeXemoji = emoji.demojize(e)[1:-1]
+                                    TeXemoji = TeXemoji.replace("_", ' ')
+                                    TeXemoji = "\\raisebox{-0.2em}{\\small\\texttwemoji{" + TeXemoji + "}}"
+                                    repliedMessageWords[k] = repliedMessageWords[k].replace(e, TeXemoji)
                         
                         if "/" in repliedMessageWords[k]:
                             output += repliedMessageWords[k]
@@ -335,11 +352,13 @@ for k in range(len(messages)): # traverse all messages
                     
                     output += "}\n"
                 if attachment["type"] == "image":
-                    imagePresent = "\\includegraphics[width=7cm]{GroupMe_img/" + m["id"] + "}"
+                    imagePresent += "\\includegraphics[width=7cm]{GroupMe_img/" + m["id"] + "_" + str(attachmentIndex) + "}\n"
                 if attachment["type"] == "file":
-                    filePresent  = "\\fileattached{" + attachment["file_id"] + "}"
+                    pass # no longer needed, but might need it in the future
                 if attachment["type"] == "video":
                     pass # TO DO - handle videos
+                
+                attachmentIndex += 1
         
         if m["name"] != "GroupMe" and prev_m["name"] != m["name"]: # if a person sends multiple messages
             output += "\\begin{senderFirstMessage}" # create a minipage environment
@@ -364,35 +383,39 @@ for k in range(len(messages)): # traverse all messages
         if m["text"] == None: # if there is no text in the message (e.g. it's all an image)
             m["text"] = ""
             
-        messageContent = m["text"].replace("\\", "\\textbackslash").replace("\n", "\\\\")
+        messageContent = m["text"].replace("\\", "\\textbackslash{}").replace("\n", "\\\\")
         
         # Emojis --------------------------------------------
         emojiContent = [c for c in messageContent if c in emoji.UNICODE_EMOJI['en']] 
-        if emojiContent: # if the message has emojis
-            for e in emojiContent: # then transform them into LaTeX-readable commands
-                TeXemoji = emoji.demojize(e)[1:-1] # demojize, then remove colons at front and end
-                TeXemoji = TeXemoji.replace("_", ' ') # replace underscores with spaces
-                TeXemoji = "\\raisebox{-0.2em}{\\Large\\texttwemoji{" + TeXemoji + "}}"
-                messageContent = messageContent.replace(e, TeXemoji)
+        if emojiContent: # if the message has emojis, then transform them into LaTeX-readable commands
+            for e in emojiContent:
+                if e not in ["™", "®️"]: # exceptions - keep trademark symbols as Unicode characters
+                    TeXemoji = emoji.demojize(e)[1:-1] # demojize, then remove colons at front and end
+                    TeXemoji = TeXemoji.replace("_", ' ') # replace underscores with spaces
+                    TeXemoji = "\\raisebox{-0.2em}{\\Large\\texttwemoji{" + TeXemoji + "}}"
+                    messageContent = messageContent.replace(e, TeXemoji)
+                
+                emojiList.append(e)
             
             # handle the weird way Python emoji breaks up emojis involving skin color
             messageContent = re.sub(
-                    r"(}}\\raisebox{-0.2em}{\\Large\\texttwemoji{)((?:\w|-)+)( skin tone}})",
+                    r"(}}.?\\raisebox{-0.2em}{\\Large\\texttwemoji{)((?:\w|-)+)( skin tone}})",
                     r": \2 skin tone}}", messageContent
                 )
-
+            
             # handle the weird way Python emoji breaks up emojis involving gender
             messageContent = re.sub(r"{\\Large\\texttwemoji{person ((?:\w|\s|:|-)+)}}.?\\raisebox{-0\.2em}{\\Large\\texttwemoji{female sign}}️", r"{\\Large\\texttwemoji{woman \1}}", messageContent)
             messageContent = re.sub(r"{\\Large\\texttwemoji{person ((?:\w|\s|:|-)+)}}.?\\raisebox{-0\.2em}{\\Large\\texttwemoji{male sign}}️", r"{\\Large\\texttwemoji{man \1}}", messageContent)
-
+        
         # URLs ---------------------------------------------
         if "https://" in messageContent or "http://" in messageContent:
             messageContent = re.sub(r"(https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))", r"\\url{\1}", messageContent)
 
         # Process remaining text ---------------------------
-        messageContent = messageContent.replace("^", "\\textasciicircum ")
+        messageContent = messageContent.replace("^", "\\textasciicircum{}")
         if "Created new poll" in messageContent[0:16]:
             messageContent = messageContent.replace("Created new poll", "{\\itshape Created new poll") + "}"
+        messageContent = messageContent.replace("- Shared a document: ", "Shared a document: ") # delete extra hyphen
         messageContent = messageContent.replace("Shared a document: ", "\\par\\vspace{1ex}\\raisebox{-1em}{\\includegraphics[height = 3em]{GroupMe_img/file_icon}}\\ \\emph{Shared a document: }")
         
         # If there isn't a URL in the message, replace the hashtag, ampersand, and other characters
@@ -413,6 +436,9 @@ for k in range(len(messages)): # traverse all messages
             messageContent = messageContent.replace(" &", " \\&")
             messageContent = messageContent.replace("% ", "\\% ")
 
+        messageContent = messageContent.replace("⟨", "$\\langle$")
+        messageContent = messageContent.replace("⟩", "$\\rangle$")
+
         # prevent LaTeX spaces from treating the period in Dr. as the end of a sentence
         messageContent = re.sub("(dr|mr|prof|ms)\.\s", r"\1.\\ ", messageContent, flags = re.IGNORECASE)
 
@@ -420,11 +446,11 @@ for k in range(len(messages)): # traverse all messages
         # If your GroupMe chat doesn't have a lot of non-Latin characters, it's a little faster to run
         # if you just comment these lines out.
         # Japanese
-        messageContent = re.sub(u"([\u3040-\u30ff]+)", r"{\\fontspec{" + lang_font["jp"] + r"}\1}", messageContent)
+        messageContent = re.sub(u"([\u3000-\u30ff]+)", r"{\\fontspec{" + lang_font["jp"] + r"}\1}", messageContent)
         # Chinese
         messageContent = re.sub(u"((?:[\u4e00-\u9fff]|[\u3000-\u303f])+)", r"{\\fontspec{" + lang_font["zh"] + r"}\1}", messageContent)
         # Korean
-        messageContent = re.sub(u"((?:[\uac00-\ud7af]+,?\s?)+)", r"{\\fontspec{" + lang_font["ko"] + r"}\1}", messageContent)
+        messageContent = re.sub(u"((?:[\u3130-\u318f\uac00-\ud7af]+,?\s?)+)", r"{\\fontspec{" + lang_font["ko"] + r"}\1}", messageContent)
         # Hindi
         messageContent = re.sub(u"((?:[\u0900-\u097f]+,?\s?)+)", r"{\\fontspec{" + lang_font["hi"] + r"}\1}", messageContent)
         # Tamil
@@ -435,14 +461,16 @@ for k in range(len(messages)): # traverse all messages
         messageContent = re.sub(u"((?:[\U00010330-\U0001034F]+\s?)+)", r"{\\fontspec{" + lang_font["got"] + r"}\1}", messageContent)
         # Runic
         messageContent = re.sub(u"((?:[\u16a0-\u16f8]+\s?)+)", r"{\\fontspec{" + lang_font["runic"] + r"}\1}", messageContent)
+        # Old Italic (Etruscan)
+        messageContent = re.sub(u"((?:[\U00010300-\U0001032F]+\s?)+)", r"{\\fontspec{" + lang_font["ett"] + r"}\1}", messageContent)
         # Now, I bet you're wondering what kinds of groupchats I get myself into...
+        
+        # TO DO - add support for Bengali
 
         # Add message content ------------------------------
         output += "\n" + messageContent + "\n"
         
-        # Attach images and files --------------------------
-        # if filePresent:
-        #     output += "\n" + filePresent + "\n"
+        # Attach images ------------------------------------
         if imagePresent:
             output += "\n" + imagePresent + "\n"
 
@@ -455,6 +483,11 @@ for k in range(len(messages)): # traverse all messages
             
         if m["favorited_by"]:
             output += "\n\\heart{" + ", ".join([getUser(user)[0] for user in m["favorited_by"]]) + "}\n"
+            if len(m["favorited_by"]) > len(mostLiked["favorited_by"]):
+                mostLiked = m
+                mostLiked_list = [m]
+            elif len(m["favorited_by"]) > len(mostLiked["favorited_by"]):
+                mostLiked_list.append(m)
         
     except:
         failureStr += m["text"] + "\n"
