@@ -141,14 +141,17 @@ for m in messages:
 
     # download images via requests.get and save to a folder
     if len(m["attachments"]) > 0:
-        # assign each attachment an index based on its position in the array
-        # this will matter when we include images for each message
+        # assign each attachment an index based on its position in the array, thereby
+        # giving a unique file name to each attachment. This will matter when we include
+        # images for each message
         attachmentIndex = 0 
         for attachment in m["attachments"]:
+            downloadName = "GroupMe_img/" + m["id"] + "_" + str(attachmentIndex)
             if attachment["type"] == "image":
-                downloadName = "GroupMe_img/" + m["id"] + "_" + str(attachmentIndex)
                 downloadImageFromAPI(attachment["url"], downloadName)
                 # TO DO - create an else statement in case an image can't be pulled
+            elif attachment["type"] == "video":
+                downloadImageFromAPI(attachment["preview_url"], downloadName)
             attachmentIndex += 1
 
 
@@ -258,7 +261,7 @@ def getMessage(messageID):
     return {'attachments': [],  'avatar_url': '', 'created_at': 0, 'favorited_by': [], 'group_id': '84353221', 'id': '',  'name': "", 'sender_id': '',  'sender_type': 'user', 'source_guid': '', 'system': False,  'text': 'ERROR GRABBING MESSAGE',  'user_id': '', 'platform': 'gm'}
 
 # If we only ran the code below the "if you aren't able to connect to the web" line, then we need to
-# regenerate the list of distinct users. If we already have a list of distinct user, this if-statement
+# regenerate the list of distinct users. If we already have a list of distinct users, this if-statement
 # gets skipped
 try:
     distinctUsers
@@ -300,6 +303,7 @@ for k in range(len(messages)): # traverse all messages
         
         imagePresent = "" # if an image is present, we'll save it here, to add to `output` later
         filePresent  = "" # same thing if a file is attached. Note:  currently, this doesn't do anything
+        videoPresent = ""
         
         if len(m["attachments"]) > 0:
             attachmentIndex = 0
@@ -336,7 +340,7 @@ for k in range(len(messages)): # traverse all messages
                                 if e not in ["™", "®️"]:
                                     TeXemoji = emoji.demojize(e)[1:-1]
                                     TeXemoji = TeXemoji.replace("_", ' ')
-                                    TeXemoji = "\\raisebox{-0.2em}{\\small\\texttwemoji{" + TeXemoji + "}}"
+                                    TeXemoji = "\\raisebox{-0.1em}{\\small\\texttwemoji{" + TeXemoji + "}}"
                                     repliedMessageWords[k] = repliedMessageWords[k].replace(e, TeXemoji)
                         
                         if "/" in repliedMessageWords[k]:
@@ -356,7 +360,7 @@ for k in range(len(messages)): # traverse all messages
                 if attachment["type"] == "file":
                     pass # no longer needed, but might need it in the future
                 if attachment["type"] == "video":
-                    pass # TO DO - handle videos
+                    videoPresent = m["id"] + "_" + str(attachmentIndex) # becomes file path to image of video preview
                 
                 attachmentIndex += 1
         
@@ -410,6 +414,8 @@ for k in range(len(messages)): # traverse all messages
         # URLs ---------------------------------------------
         if "https://" in messageContent or "http://" in messageContent:
             messageContent = re.sub(r"(https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))", r"\\url{\1}", messageContent)
+            if videoPresent:
+                messageContent = re.sub("\\\\url{(https://v.groupme.com/\S+)}", r"\n\n\\video{" + videoPresent + "}\\href{\1}{Video must be watched online}", messageContent)
 
         # Process remaining text ---------------------------
         messageContent = messageContent.replace("^", "\\textasciicircum{}")
@@ -435,6 +441,7 @@ for k in range(len(messages)): # traverse all messages
             messageContent = messageContent.replace(" $", " \\$")
             messageContent = messageContent.replace(" &", " \\&")
             messageContent = messageContent.replace("% ", "\\% ")
+            messageContent = messageContent.replace("_\\", "\\_\\")
 
         messageContent = messageContent.replace("⟨", "$\\langle$")
         messageContent = messageContent.replace("⟩", "$\\rangle$")
