@@ -37,8 +37,9 @@
 \newcommand{\profilePic}[1]{\makebox[0em][r]{\raisebox{0em}[0em][0em]{\raisebox{-2em}{\includegraphics[width=3em,height=3em]{GroupMe_img/#1}}\hspace{3mm}}}\hspace*{-0.25em}}
 \newcommand{\genericProfilePic}[1]{\makebox[0em][r]{\raisebox{-1.5em}[-3em][-3em]{\color{calmblue}\scalebox{3.4}{\textcircled{\scalebox{0.7}{ {#1} }}}}\hspace{2mm}}\hspace*{-0.25em}}
 \newcommand{\GroupMe}[1]{\raisebox{0.1ex}{\includegraphics{GroupMe_img/GroupMe_sys_msg}} {\itshape#1}}
-%\newcommand{\fileattached}[1]{\emph{\color{calmblue}#1}}
-
+\newcommand{\video}[2]{\parbox{7cm}{
+{\makebox[0pt][l]{\rule{7cm}{3.9375cm}}\makebox[7cm][c]{\includegraphics[height=3.9375cm]{GroupMe_img/#1}}}
+\raisebox{3.7cm}[0cm][0cm]{\hspace{2mm}\includegraphics{GroupMe_img/video_preview_icon}}\par\vspace{-5mm}\raisebox{-0.2em}{\includegraphics{GroupMe_img/video_icon}} \footnotesize\href{#2}{Watch full video online}}\vspace{1ex}}
 
 \newenvironment{senderFirstMessage}{\vspace{\messageSpread}
 \par\begin{minipage}{\textwidth}}{\end{minipage}\vspace{1ex}}
