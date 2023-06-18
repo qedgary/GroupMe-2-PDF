@@ -342,7 +342,10 @@ for k in range(len(messages)): # traverse all messages
                                     TeXemoji = TeXemoji.replace("_", ' ')
                                     TeXemoji = "\\raisebox{-0.1em}{\\small\\texttwemoji{" + TeXemoji + "}}"
                                     repliedMessageWords[k] = repliedMessageWords[k].replace(e, TeXemoji)
-                        
+                            repliedMessageWords = re.sub(r"(}}.?\\raisebox{-0.1em}{\\Large\\texttwemoji{)((?:\w|-)+)( skin tone}})", r": \2 skin tone}}", repliedMessageWords)
+                            repliedMessageWords = re.sub(r"{\\Large\\texttwemoji{person ((?:\w|\s|:|-)+)}}.?\\raisebox{-0\.1em}{\\Large\\texttwemoji{female sign}}️", r"{\\Large\\texttwemoji{woman \1}}", repliedMessageWords)
+                            repliedMessageWords = re.sub(r"{\\Large\\texttwemoji{person ((?:\w|\s|:|-)+)}}.?\\raisebox{-0\.1em}{\\Large\\texttwemoji{male sign}}️", r"{\\Large\\texttwemoji{man \1}}", repliedMessageWords)
+                            
                         if "/" in repliedMessageWords[k]:
                             output += repliedMessageWords[k]
                         else:
@@ -415,7 +418,7 @@ for k in range(len(messages)): # traverse all messages
         if "https://" in messageContent or "http://" in messageContent:
             messageContent = re.sub(r"(https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))", r"\\url{\1}", messageContent)
             if videoPresent:
-                messageContent = re.sub("\\\\url{(https://v.groupme.com/\S+)}", r"\n\n\\video{" + videoPresent + "}\\href{\1}{Video must be watched online}", messageContent)
+                messageContent = re.sub("\\\\url{(https://v.groupme.com/\S+)}", r"\n\n\\video{" + videoPresent + r"}{\1}", messageContent)
 
         # Process remaining text ---------------------------
         messageContent = messageContent.replace("^", "\\textasciicircum{}")
