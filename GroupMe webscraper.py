@@ -340,11 +340,11 @@ for k in range(len(messages)): # traverse all messages
                                 if e not in ["™", "®️"]:
                                     TeXemoji = emoji.demojize(e)[1:-1]
                                     TeXemoji = TeXemoji.replace("_", ' ')
-                                    TeXemoji = "\\raisebox{-0.1em}{\\small\\texttwemoji{" + TeXemoji + "}}"
+                                    TeXemoji = "\\raisebox{-0.1em}{\\normalsize\\texttwemoji{" + TeXemoji + "}}"
                                     repliedMessageWords[k] = repliedMessageWords[k].replace(e, TeXemoji)
-                            repliedMessageWords = re.sub(r"(}}.?\\raisebox{-0.1em}{\\Large\\texttwemoji{)((?:\w|-)+)( skin tone}})", r": \2 skin tone}}", repliedMessageWords)
-                            repliedMessageWords = re.sub(r"{\\Large\\texttwemoji{person ((?:\w|\s|:|-)+)}}.?\\raisebox{-0\.1em}{\\Large\\texttwemoji{female sign}}️", r"{\\Large\\texttwemoji{woman \1}}", repliedMessageWords)
-                            repliedMessageWords = re.sub(r"{\\Large\\texttwemoji{person ((?:\w|\s|:|-)+)}}.?\\raisebox{-0\.1em}{\\Large\\texttwemoji{male sign}}️", r"{\\Large\\texttwemoji{man \1}}", repliedMessageWords)
+                            repliedMessageWords[k] = re.sub(r"(}}.?\\raisebox{-0.1em}{\\normalsize\\texttwemoji{)((?:\w|-)+)( skin tone}})", r": \2 skin tone}}", repliedMessageWords[k])
+                            repliedMessageWords[k] = re.sub(r"{\\Large\\texttwemoji{person ((?:\w|\s|:|-)+)}}.?\\raisebox{-0\.1em}{\\Large\\texttwemoji{female sign}}️", r"{\\normalsize\\texttwemoji{woman \1}}", repliedMessageWords[k])
+                            repliedMessageWords[k] = re.sub(r"{\\Large\\texttwemoji{person ((?:\w|\s|:|-)+)}}.?\\raisebox{-0\.1em}{\\Large\\texttwemoji{male sign}}️", r"{\\normalsize\\texttwemoji{man \1}}", repliedMessageWords[k])
                             
                         if "/" in repliedMessageWords[k]:
                             output += repliedMessageWords[k]
@@ -417,8 +417,6 @@ for k in range(len(messages)): # traverse all messages
         # URLs ---------------------------------------------
         if "https://" in messageContent or "http://" in messageContent:
             messageContent = re.sub(r"(https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))", r"\\url{\1}", messageContent)
-            if videoPresent:
-                messageContent = re.sub("\\\\url{(https://v.groupme.com/\S+)}", r"\n\n\\video{" + videoPresent + r"}{\1}", messageContent)
 
         # Process remaining text ---------------------------
         messageContent = messageContent.replace("^", "\\textasciicircum{}")
@@ -445,6 +443,8 @@ for k in range(len(messages)): # traverse all messages
             messageContent = messageContent.replace(" &", " \\&")
             messageContent = messageContent.replace("% ", "\\% ")
             messageContent = messageContent.replace("_\\", "\\_\\")
+            if videoPresent: # change GroupMe video URLs into video previews
+                messageContent = re.sub("\\\\url{(https://v.groupme.com/\S+)}", r"\n\n\\video{" + videoPresent + r"}{\1}", messageContent)
 
         messageContent = messageContent.replace("⟨", "$\\langle$")
         messageContent = messageContent.replace("⟩", "$\\rangle$")
@@ -500,7 +500,7 @@ for k in range(len(messages)): # traverse all messages
                 mostLiked_list.append(m)
         
     except:
-        failureStr += m["text"] + "\n"
+        failureStr += m["id"] + ": " + str(m["text"]) + "\n"
         
         
 #print(output)
