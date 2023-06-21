@@ -445,7 +445,9 @@ for k in range(len(messages)): # traverse all messages
             messageContent = messageContent.replace("_\\", "\\_\\")
             if videoPresent: # change GroupMe video URLs into video previews
                 messageContent = re.sub("\\\\url{(https://v.groupme.com/\S+)}", r"\n\n\\video{" + videoPresent + r"}{\1}", messageContent)
-
+        
+        messageContent = messageContent.replace(">","{>}")
+        messageContent = messageContent.replace("<","{<}")
         messageContent = messageContent.replace("⟨", "$\\langle$")
         messageContent = messageContent.replace("⟩", "$\\rangle$")
 
@@ -456,15 +458,17 @@ for k in range(len(messages)): # traverse all messages
         # If your GroupMe chat doesn't have a lot of non-Latin characters, it's a little faster to run
         # if you just comment these lines out.
         # Japanese
-        messageContent = re.sub(u"([\u3000-\u30ff]+)", r"{\\fontspec{" + lang_font["jp"] + r"}\1}", messageContent)
+        messageContent = re.sub(u"([\u3000-\u30ff\uff01-\uff9f\uffe0-\uffee]+)", r"{\\fontspec{" + lang_font["jp"] + r"}\1}", messageContent)
         # Chinese
-        messageContent = re.sub(u"((?:[\u4e00-\u9fff]|[\u3000-\u303f])+)", r"{\\fontspec{" + lang_font["zh"] + r"}\1}", messageContent)
+        messageContent = re.sub(u"((?:[\u4e00-\u9fff\u3000-\u303f\uff01-\uff63])+)", r"{\\fontspec{" + lang_font["zh"] + r"}\1}", messageContent)
         # Korean
-        messageContent = re.sub(u"((?:[\u3130-\u318f\uac00-\ud7af]+,?\s?)+)", r"{\\fontspec{" + lang_font["ko"] + r"}\1}", messageContent)
+        messageContent = re.sub(u"((?:[\u3130-\u318f\uac00-\ud7af\uff01-\uff63\uffa0-\uffee]+,?\s?)+)", r"{\\fontspec{" + lang_font["ko"] + r"}\1}", messageContent)
         # Hindi
-        messageContent = re.sub(u"((?:[\u0900-\u097f]+,?\s?)+)", r"{\\fontspec{" + lang_font["hi"] + r"}\1}", messageContent)
+        messageContent = re.sub(u"((?:[\u0900-\u097f]+,?\s?)+)", r"{\\fontspec[Script=Devanagari]{" + lang_font["hi"] + r"}\\texthindi{\1}}", messageContent)
         # Tamil
-        messageContent = re.sub(u"((?:[\u0b82-\u0bf2]+,?\s?)+)", r"{\\fontspec{" + lang_font["ta"] + r"}\1}", messageContent)
+        messageContent = re.sub(u"((?:[\u0b82-\u0bf2]+,?\s?)+)", r"{\\fontspec[Script=Tamil]{" + lang_font["ta"] + r"}\\texttamil{\1}}", messageContent)
+        # Bengali
+        messageContent = re.sub(u"((?:[\u0980-\u09fe]+,?\s?)+)", r"{\\fontspec[Script=Bengali]{" + lang_font["bn"] + r"}\\textbengali{\1}}", messageContent)
         # Languages in Arabic script
         messageContent = re.sub(u"((?:[\u0600-\u06ff]+\s*)+)", r"\\textarabic{\1}", messageContent)
         # Gothic
@@ -474,8 +478,6 @@ for k in range(len(messages)): # traverse all messages
         # Old Italic (Etruscan)
         messageContent = re.sub(u"((?:[\U00010300-\U0001032F]+\s?)+)", r"{\\fontspec{" + lang_font["ett"] + r"}\1}", messageContent)
         # Now, I bet you're wondering what kinds of groupchats I get myself into...
-        
-        # TO DO - add support for Bengali
 
         # Add message content ------------------------------
         output += "\n" + messageContent + "\n"
