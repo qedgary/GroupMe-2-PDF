@@ -353,9 +353,11 @@ for k in range(len(messages)): # traverse all messages
                         
                         # once the reply is too long to fit on one line, cut it off
                         # we have semi-arbitrarily defined "too long" to be 60 characters
-                        if replyToLength > 60: 
+                        if replyToLength > 60 and k != len(repliedMessageWords) - 1: 
                             output += " $\\ldots$"
                             break
+
+                            # TO DO - add non-Latin script support in replies
                     
                     output += "}\n"
                 if attachment["type"] == "image":
@@ -437,12 +439,14 @@ for k in range(len(messages)): # traverse all messages
             messageContent = messageContent.replace("&", "\\&")
             messageContent = messageContent.replace("%", "\\%")
             messageContent = messageContent.replace("_", "\\_")
+            messageContent = messageContent.replace("~", "\\~{}")
         else:
             messageContent = messageContent.replace(" #", " \\#")
             messageContent = messageContent.replace(" $", " \\$")
             messageContent = messageContent.replace(" &", " \\&")
             messageContent = messageContent.replace("% ", "\\% ")
             messageContent = messageContent.replace("_\\", "\\_\\")
+            messageContent = messageContent.replace(" ~", " \\~{}")
             if videoPresent: # change GroupMe video URLs into video previews
                 messageContent = re.sub("\\\\url{(https://v.groupme.com/\S+)}", r"\n\n\\video{" + videoPresent + r"}{\1}", messageContent)
         
